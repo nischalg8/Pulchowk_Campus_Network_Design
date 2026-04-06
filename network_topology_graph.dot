@@ -1,0 +1,390 @@
+digraph PulchowkCampus {
+
+    rankdir=TB
+    fontname="Helvetica"
+    fontsize=11
+    splines=polyline
+    nodesep=0.5
+    ranksep=0.7
+
+    node [fontname="Helvetica" fontsize=10 style=filled fillcolor=white shape=box]
+    edge [fontname="Helvetica" fontsize=8]
+
+    // ─────────────────────────────────────────────
+    // ISP SIDE
+    // ─────────────────────────────────────────────
+    subgraph cluster_isp {
+        label="ISP Side (Vianet)"
+        style=filled
+        fillcolor="#f0f0f0"
+        color=black
+        fontsize=12
+
+        ISP [shape=box fillcolor=lightgray label="Internet / ISP"]
+
+        subgraph cluster_isp_servers {
+            label="ISP Servers"
+            style=filled
+            fillcolor="#e0e0e0"
+            ISPDNS [shape=oval fillcolor=lightyellow label="R-ISP-DNS\n8.8.8.8\n(External DNS)"]
+            ISPWeb [shape=oval fillcolor=lightyellow label="R-ISP-Web\n8.8.8.9\n(vianet.com.np)"]
+        }
+
+        RISP [label="R-ISP\n(ISP Transit)" fillcolor="#d0d0d0"]
+
+        RISP -> ISPDNS [style=dashed arrowhead=none]
+        RISP -> ISPWeb [style=dashed arrowhead=none]
+    }
+
+    // ─────────────────────────────────────────────
+    // AREA 0 – BACKBONE
+    // ─────────────────────────────────────────────
+    subgraph cluster_area0 {
+        label="Area 0 – Backbone (CIT Server Room)"
+        style=filled
+        fillcolor="#fff8e1"
+        color=black
+        fontsize=12
+
+        RBorder [label="R-BorderRouter\n(BGP)" fillcolor="#ffe082"]
+        RCore   [label="R-Core\n(OSPF Backbone)" fillcolor="#ffe082"]
+
+        subgraph cluster_serverlan {
+            label="Server LAN  103.5.3.192/28  GW: 103.5.3.206"
+            style=filled
+            fillcolor="#fffde7"
+            color=gray
+
+            DNS1  [shape=oval fillcolor=lightcyan label="DNS1\n103.5.3.193\nPrimary DNS\npulchowk.edu.np"]
+            Web1  [shape=oval fillcolor=lightcyan label="Web1\n103.5.3.194\nCampus Website\npcampus.edu.np"]
+            DHCP1 [shape=oval fillcolor=lightcyan label="DHCP1\n103.5.3.195\nCentral DHCP"]
+        }
+
+        RCore -> DNS1  [style=dashed arrowhead=none color=gray]
+        RCore -> Web1  [style=dashed arrowhead=none color=gray]
+        RCore -> DHCP1 [style=dashed arrowhead=none color=gray]
+    }
+
+    // ─────────────────────────────────────────────
+    // AREA 10 – DOECE, CIT, Campus Facilities
+    // ─────────────────────────────────────────────
+    subgraph cluster_area10 {
+        label="Area 10 – DOECE, CIT & Campus Facilities"
+        style=filled
+        fillcolor="#e3f2fd"
+        color=blue
+        fontsize=12
+
+        ABR10 [label="ABR10\n(Area Border, Transit)" fillcolor="#90caf9"]
+
+        // ── R-DOECE/Elec ──
+        subgraph cluster_doece {
+            label="R-DOECE/Elec  (Router-on-a-Stick)"
+            style=filled
+            fillcolor="#e1f5fe"
+            color=blue
+
+            RDOECE [label="R-DOECE/Elec" fillcolor="#64b5f6"]
+
+            subgraph cluster_doece_vlans {
+                label="VLAN 1: DOECE/Elect 103.5.0.0/24 GW:.254\nVLAN 10: Dept Server LAN 103.5.1.168/29 GW:.174"
+                style=filled
+                fillcolor="#f9fbe7"
+                color=gray
+
+                // Dept servers on VLAN 10
+                DNS2  [shape=oval fillcolor=lightcyan label="DNS2\n103.5.1.169\nDept DNS"]
+                Web2  [shape=oval fillcolor=lightcyan label="Web2\n103.5.1.170\ndepts.pcampus.edu.np"]
+                DHCP2 [shape=oval fillcolor=lightcyan label="DHCP2\n103.5.1.171\nDHCP for VLAN1"]
+
+                // Switch hierarchy: SW-FirstFloor is distribution
+                SW_F1 [label="SW-FirstFloor\n(Distribution)\nVLAN1 + VLAN10"]
+                SW_F2 [label="SW-SecondFloor\n(Access)\nVLAN1 + VLAN10"]
+                SW_F3 [label="SW-ThirdFloor\n(Access)\nVLAN1 + VLAN10"]
+
+                // Servers hang off distribution switch
+                SW_F1 -> DNS2  [style=dashed arrowhead=none]
+                SW_F1 -> Web2  [style=dashed arrowhead=none]
+                SW_F1 -> DHCP2 [style=dashed arrowhead=none]
+
+                // Access switches connect to distribution
+                SW_F1 -> SW_F2 [label="Trunk\nVLAN1,10" color=blue]
+                SW_F1 -> SW_F3 [label="Trunk\nVLAN1,10" color=blue]
+            }
+
+            RDOECE -> SW_F1 [label="802.1Q Trunk\nVLAN1,10" color=blue]
+        }
+
+        // ── R-CIT ──
+        subgraph cluster_cit {
+            label="R-CIT  (Router-on-a-Stick)"
+            style=filled
+            fillcolor="#e8f5e9"
+            color=blue
+
+            RCIT [label="R-CIT" fillcolor="#64b5f6"]
+
+            subgraph cluster_cit_vlans {
+                label="VLAN10: CIT 103.5.1.0/26 GW:.62 | VLAN20: Library 103.5.1.64/27 GW:.94 | VLAN30: ICTC 103.5.1.96/27 GW:.126"
+                style=filled
+                fillcolor="#f9fbe7"
+                color=gray
+
+                // SW-CIT-ICTC-Lib-2 is distribution (connects to router)
+                SW_CIT2 [label="SW-CIT-ICTC-Lib-2\n(Distribution)\nVLAN10,20,30"]
+                SW_CIT1 [label="SW-CIT-ICTC-Lib-1\n(Access)\nVLAN10,20,30"]
+                SW_CIT3 [label="SW-CIT-ICTC-Lib-3\n(Access)\nVLAN10,20,30"]
+
+                SW_CIT2 -> SW_CIT1 [label="Trunk\nVLAN10,20,30" color=blue]
+                SW_CIT2 -> SW_CIT3 [label="Trunk\nVLAN10,20,30" color=blue]
+            }
+
+            RCIT -> SW_CIT2 [label="802.1Q Trunk\nVLAN10,20,30" color=blue]
+        }
+
+        // ── R-Facilities ──
+        subgraph cluster_facilities {
+            label="R-Facilities"
+            style=filled
+            fillcolor="#f3e5f5"
+            color=blue
+
+            RFacilities [label="R-Facilities" fillcolor="#64b5f6"]
+
+            subgraph cluster_robotics {
+                label="Robotics & Workshop  103.5.1.128/28  GW:.142"
+                style=filled fillcolor="#fce4ec" color=gray
+                ROB_LAN [shape=ellipse fillcolor="#f8bbd0" label="Robotics & Workshop\n103.5.1.128/28"]
+                SW_ROB  [label="SW-Robotics"]
+                ROB_LAN -> SW_ROB [style=dashed arrowhead=none]
+            }
+
+            subgraph cluster_ucanteen {
+                label="Upper Canteen  103.5.1.144/29  GW:.150"
+                style=filled fillcolor="#e8f5e9" color=gray
+                UCAN_LAN [shape=ellipse fillcolor="#c8e6c9" label="Upper Canteen\n103.5.1.144/29"]
+                SW_UCAN  [label="SW-Canteen"]
+                UCAN_LAN -> SW_UCAN [style=dashed arrowhead=none]
+            }
+
+            RFacilities -> ROB_LAN  [label="103.5.1.128/28"]
+            RFacilities -> UCAN_LAN [label="103.5.1.144/29"]
+        }
+
+        // ABR10 links
+        ABR10 -> RDOECE      [label="103.5.1.152/30" color=blue]
+        ABR10 -> RCIT        [label="103.5.1.156/30" color=blue]
+        ABR10 -> RFacilities [label="103.5.1.160/30" color=blue]
+
+        // Redundant intra-area P2P
+        RDOECE -> RCIT [label="103.5.1.164/30\n(Redundant P2P)" style=dashed color=blue]
+    }
+
+    // ─────────────────────────────────────────────
+    // AREA 20 – Engineering & Applied Science
+    // ─────────────────────────────────────────────
+    subgraph cluster_area20 {
+        label="Area 20 – Engineering & Applied Science"
+        style=filled
+        fillcolor="#e8f5e9"
+        color=darkgreen
+        fontsize=12
+
+        ABR20 [label="ABR20\n(Area Border, Transit)" fillcolor="#a5d6a7"]
+
+        subgraph cluster_civil {
+            label="R-Civil"
+            style=filled fillcolor="#f1f8e9" color=darkgreen
+
+            RCivil [label="R-Civil" fillcolor="#66bb6a"]
+
+            subgraph cluster_civil_lan {
+                label="Civil Engineering  103.5.1.192/26  GW:.254"
+                style=filled fillcolor="#f9fbe7" color=gray
+                CIV_LAN [shape=ellipse fillcolor="#f0f4c3" label="Civil Engineering\n103.5.1.192/26"]
+                SW_CIV  [label="SW-Civil"]
+                CIV_LAN -> SW_CIV [style=dashed arrowhead=none]
+            }
+            RCivil -> CIV_LAN [label="103.5.1.192/26"]
+        }
+
+        subgraph cluster_mech {
+            label="R-MechAeroAppFSU"
+            style=filled fillcolor="#f1f8e9" color=darkgreen
+
+            RMech [label="R-MechAeroAppFSU" fillcolor="#66bb6a"]
+
+            subgraph cluster_mech_lan {
+                label="Mech + Aero + Applied Sci + FSU + Incubation  103.5.2.0/25  GW:.126"
+                style=filled fillcolor="#e8f5e9" color=gray
+
+                // Distribution switch connects to router
+                SW_DIST  [label="SW-Distribution\n(Distribution)"]
+
+                // Access switches connect to SW-Distribution
+                SW_AERO  [label="SW-Aerospace\n(Access)"]
+                SW_MECH2 [label="SW-Mech\n(Access)"]
+                SW_APP   [label="SW-AppliedScience\n(Access)"]
+                SW_FSU   [label="SW-FSU Office\n(Access)"]
+                SW_INC   [label="SW-Incubation\n(Access)"]
+
+                SW_DIST -> SW_AERO  [label="Trunk" color=darkgreen]
+                SW_DIST -> SW_MECH2 [label="Trunk" color=darkgreen]
+                SW_DIST -> SW_APP   [label="Trunk" color=darkgreen]
+                SW_DIST -> SW_FSU   [label="Trunk" color=darkgreen]
+                SW_DIST -> SW_INC   [label="Trunk" color=darkgreen]
+            }
+
+            RMech -> SW_DIST [label="103.5.2.0/25" color=darkgreen]
+        }
+
+        ABR20 -> RCivil [label="103.5.1.176/30" color=darkgreen]
+        ABR20 -> RMech  [label="103.5.1.180/30" color=darkgreen]
+
+        // Redundant intra-area P2P
+        RCivil -> RMech [label="103.5.2.128/30\n(Redundant P2P)" style=dashed color=darkgreen]
+    }
+
+    // ─────────────────────────────────────────────
+    // AREA 30 – Architecture & Administration
+    // ─────────────────────────────────────────────
+    subgraph cluster_area30 {
+        label="Area 30 – Architecture & Administration"
+        style=filled
+        fillcolor="#fff3e0"
+        color=darkorange
+        fontsize=12
+
+        ABR30 [label="ABR30\n(Area Border, Transit)" fillcolor="#ffcc80"]
+
+        subgraph cluster_admin {
+            label="R-Admin"
+            style=filled fillcolor="#fff8e1" color=darkorange
+
+            RAdmin [label="R-Admin" fillcolor="#ffa726"]
+
+            subgraph cluster_admin_lan {
+                label="Admin & Accounts  103.5.2.192/26  GW:.254"
+                style=filled fillcolor="#fffde7" color=gray
+
+                // SW-Admin connects to router; SW-Finance connects to SW-Admin
+                SW_ADM [label="SW-Admin\n(Distribution)"]
+                SW_FIN [label="SW-Finance\n(Access)"]
+                SW_ADM -> SW_FIN [label="Trunk" color=darkorange]
+            }
+
+            RAdmin -> SW_ADM [label="103.5.2.192/26"]
+        }
+
+        subgraph cluster_archmasters {
+            label="R-ArchMasters"
+            style=filled fillcolor="#fff8e1" color=darkorange
+
+            RArch [label="R-ArchMasters" fillcolor="#ffa726"]
+
+            subgraph cluster_arch_lan {
+                label="Architecture  103.5.2.160/27  GW:.190"
+                style=filled fillcolor="#fff3e0" color=gray
+                ARCH_LAN [shape=ellipse fillcolor="#ffe0b2" label="Architecture Dept\n103.5.2.160/27"]
+                SW_ARCH  [label="SW-ArchDept"]
+                ARCH_LAN -> SW_ARCH [style=dashed arrowhead=none]
+            }
+
+            subgraph cluster_masters_lan {
+                label="Masters Hostel  103.5.3.0/27  GW:.30"
+                style=filled fillcolor="#fbe9e7" color=gray
+                MAST_LAN [shape=ellipse fillcolor="#ffccbc" label="Masters Hostel\n103.5.3.0/27"]
+                SW_MAST  [label="SW-MastersHostel"]
+                MAST_LAN -> SW_MAST [style=dashed arrowhead=none]
+            }
+
+            RArch -> ARCH_LAN [label="103.5.2.160/27"]
+            RArch -> MAST_LAN [label="103.5.3.0/27"]
+        }
+
+        ABR30 -> RAdmin [label="103.5.2.140/30" color=darkorange]
+        ABR30 -> RArch  [label="103.5.2.144/30" color=darkorange]
+    }
+
+    // ─────────────────────────────────────────────
+    // AREA 40 – Residential
+    // ─────────────────────────────────────────────
+    subgraph cluster_area40 {
+        label="Area 40 – Residential"
+        style=filled
+        fillcolor="#f3e5f5"
+        color=purple
+        fontsize=12
+
+        ABR40 [label="ABR40\n(Area Border, Transit)" fillcolor="#ce93d8"]
+
+        subgraph cluster_boys {
+            label="R-BoysHostel"
+            style=filled fillcolor="#fce4ec" color=purple
+
+            RBoys [label="R-BoysHostel" fillcolor="#ba68c8"]
+
+            subgraph cluster_boys_lan {
+                label="Boys Hostel  103.5.3.64/26  GW:.126"
+                style=filled fillcolor="#f3e5f5" color=gray
+                BOYS_LAN [shape=ellipse fillcolor="#e1bee7" label="Boys Hostel\n103.5.3.64/26"]
+                SW_BA [label="SW-Block A"]
+                SW_BB [label="SW-Block B"]
+                SW_BC [label="SW-Block C"]
+                BOYS_LAN -> SW_BA [style=dashed arrowhead=none]
+                BOYS_LAN -> SW_BB [style=dashed arrowhead=none]
+                BOYS_LAN -> SW_BC [style=dashed arrowhead=none]
+            }
+
+            subgraph cluster_lcanteen {
+                label="Lower Canteen  103.5.3.40/29  GW:.46"
+                style=filled fillcolor="#e8f5e9" color=gray
+                LCAN_LAN [shape=ellipse fillcolor="#c8e6c9" label="Lower Canteen\n103.5.3.40/29"]
+                SW_LCAN  [label="SW-LCanteen"]
+                LCAN_LAN -> SW_LCAN [style=dashed arrowhead=none]
+            }
+
+            RBoys -> BOYS_LAN [label="103.5.3.64/26"]
+            RBoys -> LCAN_LAN [label="103.5.3.40/29"]
+        }
+
+        subgraph cluster_girls {
+            label="R-GirlsStaff"
+            style=filled fillcolor="#e8eaf6" color=purple
+
+            RGirls [label="R-GirlsStaff" fillcolor="#ba68c8"]
+
+            subgraph cluster_girls_lan {
+                label="Girls Hostel + Staff Quarters  103.5.3.128/26  GW:.190"
+                style=filled fillcolor="#e8eaf6" color=gray
+                GIRLS_LAN [shape=ellipse fillcolor="#c5cae9" label="Girls Hostel\n+ Staff Quarters\n103.5.3.128/26"]
+                SW_GH [label="SW-GirlsHostel"]
+                SW_SQ [label="SW-StaffQuarter"]
+                GIRLS_LAN -> SW_GH [style=dashed arrowhead=none]
+                GIRLS_LAN -> SW_SQ [style=dashed arrowhead=none]
+            }
+
+            RGirls -> GIRLS_LAN [label="103.5.3.128/26"]
+        }
+
+        ABR40 -> RBoys  [label="103.5.3.32/30" color=purple]
+        ABR40 -> RGirls [label="103.5.3.36/30" color=purple]
+    }
+
+    // ─────────────────────────────────────────────
+    // BACKBONE / INTER-AREA LINKS
+    // ─────────────────────────────────────────────
+
+    ISP     -> RISP    [label="Internet Transit"]
+    RISP    -> RBorder [label="103.5.3.232/30\n(P2P to ISP)"]
+    RBorder -> RCore   [label="103.5.3.208/30\n(BGP to OSPF)"]
+
+    RCore -> ABR10 [label="103.5.3.216/30" color=red fontcolor=red]
+    RCore -> ABR20 [label="103.5.3.220/30" color=red fontcolor=red]
+    RCore -> ABR30 [label="103.5.3.224/30" color=red fontcolor=red]
+    RCore -> ABR40 [label="103.5.3.228/30" color=red fontcolor=red]
+
+    // Inter-area redundant links
+    ABR10 -> ABR20 [label="103.5.2.136/30\n(Inter-area Redundant)" style=dashed color=red fontcolor=red]
+    ABR30 -> ABR40 [label="103.5.2.148/30\n(Inter-area Redundant)" style=dashed color=red fontcolor=red]
+}
