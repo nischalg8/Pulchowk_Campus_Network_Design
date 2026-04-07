@@ -19,7 +19,7 @@
 | IP Block | `103.5.0.0/22` (1,024 addresses) |
 | Allocated | 1,004 addresses |
 | Reserved (future) | 20 addresses — `103.5.3.236 – 103.5.3.255` |
-| Routing Protocol | OSPF multi-area + BGP (border) |
+| Routing Protocol | OSPF multi-area + Static Routing to ISP  (border) |
 | Total Routers | 16 (6 transit-only, 10 LAN-connected) |
 | OSPF Areas | 5 (Area 0 backbone + Areas 10, 20, 30, 40) |
 | IP Allocation | VLSM |
@@ -31,7 +31,7 @@
 
 The design follows a three-tier hierarchical model.
 
-**Core Layer** — R-Core in the CIT server room maintains OSPF adjacencies with all four ABRs. R-BorderRouter sits between R-ISP and R-Core, redistributing the BGP default route into OSPF so all campus areas reach the internet.
+**Core Layer** — R-Core in the CIT server room maintains OSPF adjacencies with all four ABRs. R-BorderRouter sits between R-ISP and R-Core, redistributing the static default route into OSPF so all campus areas reach the internet.
 
 **Distribution Layer** — Each area has one ABR that exchanges summarised routing information between its area and the backbone.
 
